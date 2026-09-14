@@ -18,7 +18,7 @@
 | 多版本策略 | 先 1.21.1 严格范围，不预埋条件 mixin | 注入点跨版本稳定性必须逐版本实测，先单版本做对更可控 |
 | NeoForge 版本 | 21.1.244 | 与工作区其他项目一致、坑已被踩过；21.1.250 只是 patch 差异 |
 | 配置格式 | ModConfigSpec COMMON + TOML + 配置界面 | 走 NeoForge 惯例（Q3/Q7）；代价是 Fabric 老 JSON 配置不能直接复用 |
-| mod 版本 | 1.1.0 | 与 Fabric 1.0.5 区分，作为新发布 |
+| mod 版本 | 1.1.1 | 与 Fabric 1.0.5 区分；1.1.0 后的补丁发布 |
 | 分支 / CI | `neoforge` 分支；CI 在 tag 推送时构建并把 jar 发布到 GitHub Release | CI 本来就是 JDK21 + `gradlew build`，加载器无关；补上 Release 发布后无需手工上传产物 |
 | 作者 | Potatoboy9999, Megastary, pasze888 | 保留原作者 + 注明移植者 |
 | 验证标准 | `build` + `runGameTestServer` + 裸 TCP 探针 | 握手时即创建登录监听器，无需真客户端即可用裸 socket 复现读/登录超时；KeepAlive 仍需真客户端 |

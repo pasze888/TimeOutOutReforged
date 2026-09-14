@@ -27,7 +27,7 @@ sourceSets.main.resources {
 }
 
 base {
-    // 构建产物命名：模组名-加载器-版本，如 timeoutout-neoforge-1.1.0.jar
+    // 构建产物命名：模组名-加载器-版本，如 timeoutout-neoforge-1.1.1.jar
     archivesName = "${mod_id}-${mod_loader}"
 }
 
