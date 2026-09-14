@@ -27,7 +27,8 @@ sourceSets.main.resources {
 }
 
 base {
-    archivesName = mod_id
+    // 构建产物命名：模组名-加载器-版本，如 timeoutout-neoforge-1.1.0.jar
+    archivesName = "${mod_id}-${mod_loader}"
 }
 
 // Mojang ships Java 21 to end users in 1.21.1, so mods should target Java 21.
