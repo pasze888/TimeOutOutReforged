@@ -19,9 +19,9 @@
 | NeoForge 版本 | 21.1.244 | 与工作区其他项目一致、坑已被踩过；21.1.250 只是 patch 差异 |
 | 配置格式 | ModConfigSpec COMMON + TOML + 配置界面 | 走 NeoForge 惯例（Q3/Q7）；代价是 Fabric 老 JSON 配置不能直接复用 |
 | mod 版本 | 1.1.0 | 与 Fabric 1.0.5 区分，作为新发布 |
-| 分支 / CI | `neoforge` 分支，`.github/workflows/build.yml` 不动 | CI 本来就是 JDK21 + `gradlew build`，加载器无关 |
+| 分支 / CI | `neoforge` 分支；CI 在 tag 推送时构建并把 jar 发布到 GitHub Release | CI 本来就是 JDK21 + `gradlew build`，加载器无关；补上 Release 发布后无需手工上传产物 |
 | 作者 | Potatoboy9999, Megastary, pasze888 | 保留原作者 + 注明移植者 |
-| 验证标准 | `build` + `runServer` 冒烟 | 超时行为需要真实超时等待，成本高，留给用户 runClient 实测 |
+| 验证标准 | `build` + `runGameTestServer` + 裸 TCP 探针 | 握手时即创建登录监听器，无需真客户端即可用裸 socket 复现读/登录超时；KeepAlive 仍需真客户端 |
 | KeepAlive 行为 | 只配置发送间隔，关闭清理超时保持原版（Q12=a） | 与 Fabric 版等价，不加新功能 |
 
 ## 3. 工具链设计
@@ -89,8 +89,11 @@ vanilla 在 `tick()` 内 `if (this.tick++ == 600) disconnect(...)`（600 ticks =
 | 层级 | 手段 | 覆盖 |
 |---|---|---|
 | 编译 | `./gradlew build` | 所有类/签名可编译、jar 打包、元数据展开正确 |
-| 加载 | `runServer` 启动到 `Done` | mod 被 FML 发现、mixin 配置被接受、服务端读超时 mixin 注入生效 |
-| 行为（未做） | `runClient` 连服务器 | KeepAlive / 登录超时目标类在**客户端连接时**才加载，裸服务端不触发；需人工实测 |
+| 注入点 | `./gradlew runGameTestServer` | 四个注入点存在且可应用（`defaultRequire=1`；本地手动跑） |
+| 加载 | `runServer` 启动到 `Done` | mod 被 FML 发现、mixin 配置被接受 |
+| 行为·读超时 | 裸 TCP 连上不发字节 | `ChannelInitializerMixin`；实测 6.02s @ `readTimeoutSeconds=6` |
+| 行为·登录超时 | 裸 TCP 只发握手包 | `ServerLoginPacketListenerImplMixin` 双注入；实测 3.03s @ 60 ticks、35.01s @ 700 ticks（见 TESTING.md 场景 4） |
+| 行为·KeepAlive | `runClient` 完成登录后装死 | `ServerCommonPacketListenerImplMixin`；需真客户端，未自动验证 |
 
 ## 7. 已知偏差与限制
 
@@ -98,6 +101,7 @@ vanilla 在 `tick()` 内 `if (this.tick++ == 600) disconnect(...)`（600 ticks =
 - **MC 版本降级**：1.21.10 → 1.21.1，仅为对齐 NeoForge 生态；原 Fabric 版保留在 `master` 分支。
 - **README 与实现的出入已修正**：新 README 只描述实际行为。
 - **多版本未验证**：原 Fabric 版一个 jar 能跑 1.20.2~1.21.8，但那是 **Yarn/intermediary 命名**下的稳定性；NeoForge 用 **Mojang 名**，跨版本必须逐版本核对（类名、方法名、匿名类编号、常量位置），核对清单见 KNOWLEDGE.md。
+- **GameTest 未接入 CI**：`runGameTestServer` 已从 CI 回退（`8dd7cd8`），注入点门禁靠本地执行；读/登录超时的行为验证用 `docs/scripts/login_timeout_probe.py`（见 TESTING.md 场景 4），KeepAlive 仍需真客户端实测。
 
 ## 8. 未来扩展方向
 

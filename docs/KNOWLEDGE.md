@@ -17,6 +17,7 @@
 - 方法：`initChannel(Lio/netty/channel/Channel;)V`。
 - 注入：`@ModifyArg`，目标 `io/netty/handler/timeout/ReadTimeoutHandler.<init> (I)V`。
 - 客户端参数是字面量 `30`；服务端参数来自 NeoForge 补丁字段 `ServerConnectionListener.READ_TIMEOUT`（读系统属性 `neoforge.readTimeout`，默认 30）——ModifyArg 对两者都生效（替换构造器实参）。
+- 实测：裸 TCP 连上后不发任何字节，`readTimeoutSeconds=6` 时 6.02s 连接被关闭。注意 `ReadTimeoutHandler` 在 netty 管道底层，若该值小于其它阶段超时，会先于登录超时触发。
 
 ### KeepAlive 发送间隔
 
@@ -35,6 +36,9 @@
   - `@Inject(method = "tick", at = @At("TAIL"))`：`tick >= 配置值` 时调 `disconnect(Component.translatable("multiplayer.disconnect.slow_login"))`；
   - `@Redirect(method = "tick", ...)`：把 tick() 内的 vanilla `disconnect` 调用变成 no-op，抑制 30s 默认踢人。
 - `disconnect` 描述符：`(Lnet/minecraft/network/chat/Component;)V`；Yarn `Text` → Mojang `Component`。
+- 实测要点：`handleIntention` 收到 intent=LOGIN 时立即 `beginLogin()` 并 `new ServerLoginPacketListenerImpl(...)`，该监听器是 `TickablePacketListener`，`Connection.tick()` 每 tick 调它；**所以只发握手包、不完成 Login Start/验证，登录计时照样跑**——裸 socket 即可复现超时，无需真客户端。
+- `tick` 在 vanilla `tick++` **之后**判断，故 `loginTimeoutTicks=N` 对应第 N 次 tick ≈ `N/20` 秒（实测 60→3.03s、700→35.01s）。
+- 跨过 600 tick（30s）是判断 `@Redirect` 是否抑制成功的唯一行为判据（实测 700 ticks 时 31.46s 仍连接、35.01s 才断）。
 
 ## 配置（ModConfigSpec）
 
