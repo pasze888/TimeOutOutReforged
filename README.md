@@ -1,7 +1,9 @@
 # Time Out Out (NeoForge)
 
-NeoForge 1.21.1 移植版，源自 [TimeOutOut (Fabric)](https://github.com/PotatoPresident/TimeOutOut) ——
+NeoForge 移植版，源自 [TimeOutOut (Fabric)](https://github.com/PotatoPresident/TimeOutOut) ——
 从 [Random Patches](https://github.com/TheRandomLabs/RandomPatches) 独立出来的连接超时配置模组。
+
+**支持 Minecraft 1.21.1 ~ 1.21.8，单个 jar 覆盖全部版本**（需 NeoForge，编译基线 21.1.244）。
 
 完整的配置说明可参考 [Random Patches README](https://github.com/TheRandomLabs/RandomPatches)。
 

@@ -56,8 +56,9 @@ config="${mod_id}.mixins.json"
     type="required" #mandatory
     # Optional field describing why the dependency is required or why it is incompatible
     # reason="..."
-    # The version range of the dependency
-    versionRange="[${neo_version},)" #mandatory
+    # 编译基线是 21.1.244，但运行期允许整个 21.1.x ~ 21.8.x 区间（单 jar 多版本）。
+    # 范围下界写 21.1 而不是 21.1.244：同一条 NeoForge 线内的修订版都应被接受。
+    versionRange="[21.1,)" #mandatory
     # An ordering relationship for the dependency.
     # BEFORE - This mod is loaded BEFORE the dependency
     # AFTER - This mod is loaded AFTER the dependency

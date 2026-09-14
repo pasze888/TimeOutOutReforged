@@ -1,7 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '2.0.146'
+    id 'net.neoforged.moddev' version '2.0.147'
     id 'idea'
 }
 
@@ -27,7 +27,7 @@ sourceSets.main.resources {
 }
 
 base {
-    // 构建产物命名：模组名-加载器-版本，如 timeoutout-neoforge-1.1.1.jar
+    // 构建产物命名：模组名-加载器-版本，如 timeoutout-neoforge-1.2.0.jar
     archivesName = "${mod_id}-${mod_loader}"
 }
 
@@ -101,7 +101,7 @@ neoForge {
 }
 
 dependencies {
-    // NeoForge 21.1.x 自带 sponge-mixin 传递依赖，mixin 注解在编译 classpath 上；
+    // NeoForge 自带 sponge-mixin 传递依赖，mixin 注解在编译 classpath 上；
     // dev 运行时直接用 Mojang 官方名（dev 名 == 运行时名），无需 refmap。
 }
 

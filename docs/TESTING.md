@@ -1,30 +1,53 @@
 # TimeOutOut 测试手册
 
-> 分层测试策略：**L1 自动化门禁**（每次改动必跑；其中 `build` 由 CI 执行）→ **L2 行为验证**（发布前手动跑一次）→ **L3 多版本**（未来放宽版本时重复 L1）。
-> 本模组逻辑极薄（只有三个 mixin 返回配置值），风险集中在"mixin 注入点是否匹配当前 MC 版本"和"三个超时是否真的生效"，测试围绕这两点设计。
+> 分层测试策略：**L1 自动化门禁**（每次改动必跑；目前只剩 `build`，由 CI 执行）→ **L2 行为验证**（发布前手动跑）→ **L3 多版本**（单 jar 覆盖 1.21.1 ~ 1.21.8 的核对与实测）。
+> 本模组逻辑极薄（只有三个 mixin 返回配置值），风险集中在"mixin 注入点是否匹配目标 MC 版本"和"三个超时是否真的生效"，测试围绕这两点设计。
+>
+> **本分支为单 jar 多版本**：编译基线 `NeoForge 21.1.244` + MC `1.21.1`，
+> 声明范围 `minecraft_version_range=[1.21.1,1.21.9)` / neoforge `[21.1,)`。新增目标版本时按 L3 流程走。
 
 ## L1：自动化门禁
 
 | 命令 | 覆盖 | 说明 |
 |---|---|---|
-| `./gradlew build` | 编译、打包、元数据展开 | 所有签名可编译；产物 `build/libs/timeoutout-*.jar`。CI 在 tag 推送 / 手动触发时都会跑 |
-| `./gradlew runGameTestServer` | **三个 mixin 的注入点** | 测试类 `TimeOutOutGameTests` 强制加载 4 个目标类，触发 mixin 应用；`defaultRequire=1` 下任何注入点缺失都会使测试失败（退出码非 0）。**本地手动跑**，CI 中的该步骤已回退 |
+| `./gradlew build` | 编译、打包、元数据展开 | 所有签名可编译；产物 `build/libs/timeoutout-neoforge-*.jar`。CI 在 tag 推送 / 手动触发时都会跑 |
 
-GameTest 原理：NeoForge 的 mixin 在**目标类加载时**应用。KeepAlive 与登录超时的目标类平时要等客户端连接才加载，测试里用 `Class.forName` 在游戏测试服务器上提前加载，把"注入点是否正确"变成可在无人值守环境验证的门禁。
-
-日志判据：`runGameTestServer` 输出应包含
-
-```
-Mixing ChannelInitializerMixin ... into net.minecraft.network.Connection$1
-Mixing ChannelInitializerMixin ... into net.minecraft.server.network.ServerConnectionListener$1
-Mixing ServerCommonPacketListenerImplMixin ... into net.minecraft.server.network.ServerCommonPacketListenerImpl
-Mixing ServerLoginPacketListenerImplMixin ... into net.minecraft.server.network.ServerLoginPacketListenerImpl
-All 1 required tests passed :)
-```
-
-> CI（`.github/workflows/build.yml`）当前只跑 `build`：`runGameTestServer` 曾在 CI 中接入（`0b7a588`）后又回退（`8dd7cd8`），注入点门禁目前需本地手动执行。
+> **注入点门禁已下线（1.21.8 起）**：MC 1.21.8 移除了注解版 GameTest（`@GameTest` / `@GameTestHolder` /
+> `@PrefixGameTestTemplate` 全部不存在），改成数据驱动——测试函数进 `minecraft:test_function`、
+> 用例进 `minecraft:test_instance`。NeoForge 的 `RegisterGameTestsEvent` 只能注册 environment 与 instance，
+> 而 `minecraft:test_function` 是 **built-in 注册表**、在 mod 构造之前就已引导并冻结，mod 没有入口，
+> `FunctionGameTestInstance` 这条路线走不通（实测报 `Trying to access missing test function`）。
+>
+> 因此本分支不再有自动化注入点门禁：`runGameTestServer` 只会跑 vanilla 自带的 `minecraft:always_pass`。
+> 原先的 `TimeOutOutGameTests` 与它依赖的 `data/timeoutout/structure/empty.nbt` 已随之下线。
+>
+> CI（`.github/workflows/build.yml`）当前只跑 `build`：`runGameTestServer` 曾在 CI 中接入（`0b7a588`）后再回退（`8dd7cd8`）。
 >
 > **CI 发布行为**：推送 tag 时，工作流除构建外还会用 `softprops/action-gh-release` 把 `build/libs/*.jar` 发布到 GitHub Release；`workflow_dispatch` 手动触发只构建、不发布。
+
+### 注入点怎么验（多版本通用）
+
+mixin 在**目标类加载时**应用，`defaultRequire=1` 也只在那一刻才会抛错——所以"启动没崩"证明不了什么，
+必须让相应目标类真的被加载。不同操作覆盖的注入点完全不同（下表与 MC 版本无关，1.21.1 ~ 1.21.8 一致）：
+
+| 操作 | 会加载的目标类 | 被校验的注入点 |
+|---|---|---|
+| 只启动到主菜单 | — | 无（只有 metadata / FML 加载） |
+| 单机开一个世界 | `ServerConnectionListener$2` → `MemoryServerHandshakePacketListenerImpl` → `ServerLoginPacketListenerImpl` | **登录超时** |
+| 玩家进世界后 | `ServerGamePacketListenerImpl`（继承 `ServerCommonPacketListenerImpl`） | **KeepAlive** |
+| 单机「对局域网开放」 | `ServerConnectionListener$1` | **服务端读超时** |
+| 客户端连多人服 | `Connection$1` | **客户端读超时** |
+| 起独立服务端并连入 | 上述全部 | 全覆盖 |
+
+实战里最高效的是 **`runServer` + 探针**（见 L2 场景 4）：服务端起监听时就会加载 `ServerConnectionListener$1`，
+探针连一次即可触发 `ServerLoginPacketListenerImpl`。日志判据（dev 环境 DEBUG 级别）：
+
+```
+Mixing ChannelInitializerMixin ... into net.minecraft.server.network.ServerConnectionListener$1
+Mixing ChannelInitializerMixin ... into net.minecraft.network.Connection$1
+Mixing ServerCommonPacketListenerImplMixin ... into net.minecraft.server.network.ServerCommonPacketListenerImpl
+Mixing ServerLoginPacketListenerImplMixin ... into net.minecraft.server.network.ServerLoginPacketListenerImpl
+```
 
 ## L2：行为验证（发布前，手动）
 
@@ -97,7 +120,10 @@ keepAlivePacketIntervalSeconds = 2  # 原 15
 3. 运行探针：
 
    ```bash
-   python docs/scripts/login_timeout_probe.py 127.0.0.1 25565
+   # 协议号必须与"当前 dev 环境跑的 MC 版本"一致；不一致时握手会被直接拒掉，
+   # 表现为"立刻断开"——是假阳性，不是超时生效。
+   # 本分支编译基线是 1.21.1 → 767；若切到 1.21.8 跑则用 772。
+   python docs/scripts/login_timeout_probe.py 127.0.0.1 25565 --protocol 767
    ```
 
 4. **预期**：约 `loginTimeoutTicks / 20` 秒后服务端关闭连接，输出形如
@@ -120,6 +146,9 @@ MC 包 = `VarInt 长度前缀` + `VarInt 包ID` + 负载。1.21.1 握手包（�
 | intent (VarInt) | 2 = LOGIN | `02` |
 
 完整帧：`10 00 ff 05 09 6c6f63616c686f7374 63dd 02`（`10` = 负载长度 16 字节）。
+
+> 帧结构本身与 MC 版本无关（1.21.1 ~ 1.21.8 都是这个布局），**唯一随版本变的是 `protocol version` 的值**：
+> 1.21.1 = 767（`ff 05`）、1.21.8 = 772（`84 06`）。探针的 `--protocol` 就是填这个字段。
 
 关键在于 `ServerHandshakePacketListenerImpl.handleIntention()` 收到 intent=LOGIN 时立即 `beginLogin()`，
 其中直接 `new ServerLoginPacketListenerImpl(server, connection, transferred)`；该监听器实现
@@ -171,17 +200,48 @@ MC 包 = `VarInt 长度前缀` + `VarInt 包ID` + 负载。1.21.1 握手包（�
 - Wireshark 抓 localhost 流量——直接看 KeepAlive 包间隔；
 - `netstat -ano` 看连接状态变化。
 
-## L3：多版本（未来放宽 `minecraft_version_range` 时）
+## L3：多版本（单 jar 1.21.1 ~ 1.21.8）
 
-每新增一个目标 MC 版本：
+**本分支用单 jar 覆盖 MC `1.21.1` ~ `1.21.8`。** 依据是四个注入点在该区间内逐版本核对未变。
+核对用两层、互相独立（方法、证据与盲区见工作区 `temp/scan-1.21.2-1.21.7/REPORT.md`）：
 
-1. 用该版本的 api-sources/反编译源码核对四个注入点（类名、方法名、匿名类 `$1` 编号、常量数量与位置）——核对清单见 [KNOWLEDGE.md](KNOWLEDGE.md)；
-2. 在该版本跑一遍 L1（`build` + `runGameTestServer`）；
-3. 行为只抽查一次（L2 场景 1 与 4 即可覆盖大部分风险）；
-4. 全部通过后再放宽 metadata 与 mixin `require`。
+| 层 | 手段 | 结论 |
+|---|---|---|
+| NeoForge patches | 逐版本取 `neoforged/NeoForge` 的 `patches/`，比对四个目标文件的 patch 内容 | 四个文件里只有 3 个被 patch，`ServerLoginPacketListenerImpl` **从未被 patch**；三个 patch 的改动内容逐版本一致，只有 hunk 行号漂移 |
+| vanilla 字节码 | 下载各版本官方 `client.jar` + `client_mappings`，用 `javap -p -c -constants` 核对 | 匿名类 `$1` 编号、`ReadTimeoutHandler(30)`、`keepConnectionAlive` 的唯一 `15000L`、`tick`/`600`/`disconnect(Component)` **全部未变** |
+
+### 各版本实测状态（重要，别把静态核对当实测）
+
+| MC 版本 | NeoForge 正式版 | 核对 | 运行时实测 |
+|---|---|---|---|
+| 1.21.1 | ✅ `21.1.244`（＝编译基线） | ✅ | ❌ 未跑（`build` 通过只证明可编译） |
+| 1.21.2 | ❌ 只有 beta | ✅ | — |
+| 1.21.3 | ✅ `21.3.97` | ✅ | ❌ 未跑 |
+| 1.21.4 | ✅ `21.4.157` | ✅ | ❌ 未跑 |
+| 1.21.5 | ✅ `21.5.98` | ✅ | ❌ 未跑 |
+| 1.21.6 | ❌ 只有 beta | ✅ | — |
+| 1.21.7 | ❌ 只有 beta | ✅ | — |
+| 1.21.8 | ✅ `21.8.54` | ✅ | ✅ `runServer` + 探针（读超时 6.01s、登录超时 3.08s） |
+
+> `1.21.2` / `1.21.6` / `1.21.7` **没有 NeoForge 正式版**（`21.2.x` 只有 2 个 beta，
+> `21.6.x` / `21.7.x` 各二十多个 beta、无 stable）。元数据范围包含它们，但不会有用户跑正式版；
+> 若要精确排除，FML 的范围语法做不到"排除区间内的某几个版本"。
+
+### 新增/抬高目标版本的流程
+
+1. 用该版本的反编译源码或 `javap` 核对四个注入点（类名、方法名、匿名类 `$1` 编号、常量数量与位置）——清单见 [KNOWLEDGE.md](KNOWLEDGE.md)；
+2. 确认该版本**有 NeoForge 正式版**（`neoforged.forgecdn.net` 的 `maven-metadata.xml`）；
+3. 若**降低**下界：把 `minecraft_version` / `parchment_*` 一并降到新下界并重新 `build`
+   （编译基线必须等于范围下界，见 DESIGN.md §1）；
+4. 若**抬高**上界：改 `minecraft_version_range`，**不需要动编译基线**（基线始终是下界）；
+5. 在新版本上起 `runServer` + 探针（L2 场景 4，**记得改 `--protocol`**），
+   KeepAlive 需真客户端进服；日志里确认四条 `Mixing ...` 都出现；
+6. 全部通过后再动 metadata 范围。**不要只用 `build` 通过就宣称支持某版本。**
+
+> 本分支**未**放宽 mixin `require`：`defaultRequire=1` 保持不变。
+> 已验证的 5 个正式版都不需要条件 mixin / soft require，失配时让它立刻报错更安全。
 
 ## 常见问题
 
-- **GameTest 报 "Missing template"**：`src/main/resources/data/timeoutout/structure/empty.nbt` 缺失或路径不对；该文件是提交在仓库里的 3×3×3 空气结构模板，用 `git checkout -- src/main/resources/data/timeoutout/structure/empty.nbt` 恢复。
 - **服务端启动即崩、报 mixin 注入失败**：说明注入点与当前 MC 版本不符，属于移植必须修的硬错误，不要用 `require=0` 掩盖。
 - **改了配置不生效**：ModConfigSpec 支持运行期重载，但**已建立的连接保持旧值**直到重连；新连接立即生效。
