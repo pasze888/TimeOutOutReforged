@@ -1,48 +1,21 @@
 package us.potatoboy.timeoutout;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class TimeOutOutConfig {
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
-    public int readTimeoutSeconds = 120;
-    public long loginTimeoutTicks = 2400;
-    public long keepAlivePacketIntervalSeconds = 15;
+    public static final ModConfigSpec.IntValue READ_TIMEOUT_SECONDS = BUILDER
+            .comment("Connection read timeout in seconds (client and server side).")
+            .defineInRange("readTimeoutSeconds", 120, 1, Integer.MAX_VALUE);
 
-    public static TimeOutOutConfig loadConfig(File file) {
-        TimeOutOutConfig config;
+    public static final ModConfigSpec.LongValue LOGIN_TIMEOUT_TICKS = BUILDER
+            .comment("How long the server waits for a player to log in, in ticks.")
+            .defineInRange("loginTimeoutTicks", 2400L, 1L, Long.MAX_VALUE);
 
-        if (file.exists() && file.isFile()) {
-            try (
-                    FileInputStream fileInputStream = new FileInputStream(file);
-                    InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream, StandardCharsets.UTF_8);
-                    BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-            ) {
-                config = GSON.fromJson(bufferedReader, TimeOutOutConfig.class);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to load config", e);
-            }
-        } else {
-            config = new TimeOutOutConfig();
-        }
+    public static final ModConfigSpec.LongValue KEEP_ALIVE_PACKET_INTERVAL_SECONDS = BUILDER
+            .comment("Interval at which KeepAlive packets are sent to clients, in seconds.")
+            .defineInRange("keepAlivePacketIntervalSeconds", 15L, 1L, Long.MAX_VALUE);
 
-        config.saveConfig(file);
-
-        return config;
-    }
-
-    public void saveConfig(File config) {
-        try (
-                FileOutputStream stream = new FileOutputStream(config);
-                Writer writer = new OutputStreamWriter(stream, StandardCharsets.UTF_8);
-        ) {
-            GSON.toJson(this, writer);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load config", e);
-        }
-    }
+    public static final ModConfigSpec SPEC = BUILDER.build();
 }

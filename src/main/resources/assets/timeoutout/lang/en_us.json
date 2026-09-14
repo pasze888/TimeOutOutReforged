@@ -1,0 +1,8 @@
+{
+  "timeoutout.configuration.title": "Time Out Out Configs",
+  "timeoutout.configuration.section.timeoutout.common.toml": "Time Out Out Configs",
+  "timeoutout.configuration.section.timeoutout.common.toml.title": "Time Out Out Configs",
+  "timeoutout.configuration.readTimeoutSeconds": "Connection read timeout (seconds)",
+  "timeoutout.configuration.loginTimeoutTicks": "Login timeout (ticks)",
+  "timeoutout.configuration.keepAlivePacketIntervalSeconds": "KeepAlive packet interval (seconds)"
+}

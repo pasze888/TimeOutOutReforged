@@ -2,11 +2,11 @@
   "required": true,
   "minVersion": "0.8",
   "package": "us.potatoboy.timeoutout.mixin",
-  "compatibilityLevel": "JAVA_16",
+  "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ChannelInitializerMixin",
-    "ServerCommonNetworkHandlerMixin",
-    "ServerLoginNetworkHandlerMixin"
+    "ServerCommonPacketListenerImplMixin",
+    "ServerLoginPacketListenerImplMixin"
   ],
   "injectors": {
     "defaultRequire": 1

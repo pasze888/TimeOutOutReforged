@@ -1,19 +1,15 @@
 package us.potatoboy.timeoutout;
 
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.loader.api.FabricLoader;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 
-import java.io.File;
+@Mod(TimeOutOut.MODID)
+public class TimeOutOut {
+    public static final String MODID = "timeoutout";
 
-public class TimeOutOut implements ModInitializer {
-    private static TimeOutOutConfig config;
-
-    @Override
-    public void onInitialize() {
-        config = TimeOutOutConfig.loadConfig(new File(FabricLoader.getInstance().getConfigDir() + "/timeoutout.json"));
-    }
-
-    public static TimeOutOutConfig getConfig() {
-        return config;
+    public TimeOutOut(IEventBus modEventBus, ModContainer modContainer) {
+        modContainer.registerConfig(ModConfig.Type.COMMON, TimeOutOutConfig.SPEC);
     }
 }
