@@ -1,0 +1,11 @@
+{
+  "timeoutout.configuration.title": "Time Out Out 配置",
+  "timeoutout.configuration.section.timeoutout.common.toml": "Time Out Out 配置",
+  "timeoutout.configuration.section.timeoutout.common.toml.title": "Time Out Out 配置",
+  "timeoutout.configuration.readTimeoutSeconds": "连接读取超时（秒）",
+  "timeoutout.configuration.readTimeoutSeconds.tooltip": "连接读取超时（秒），客户端与服务端都生效。",
+  "timeoutout.configuration.loginTimeoutTicks": "登录超时（游戏刻）",
+  "timeoutout.configuration.loginTimeoutTicks.tooltip": "服务器等待玩家完成登录的时长（游戏刻，20 刻 = 1 秒）。",
+  "timeoutout.configuration.keepAlivePacketIntervalSeconds": "KeepAlive 包间隔（秒）",
+  "timeoutout.configuration.keepAlivePacketIntervalSeconds.tooltip": "服务器向客户端发送 KeepAlive 包的间隔（秒）；总踢人超时约为该值的 2 倍。"
+}

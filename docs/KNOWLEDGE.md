@@ -48,7 +48,7 @@
 - 配置界面：客户端类 `@Mod(value = MODID, dist = Dist.CLIENT)` 的构造器里
   `container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new)`
   （`net.neoforged.neoforge.client.gui.ConfigurationScreen` / `IConfigScreenFactory`，接口方法 `createScreen(ModContainer, Screen)`）。
-- 界面翻译键（en_us.json）：`<modid>.configuration.title`、`<modid>.configuration.section.<modid>.common.toml`、
+- 界面翻译键（`en_us.json` + `zh_cn.json`）：`<modid>.configuration.title`、`<modid>.configuration.section.<modid>.common.toml`、
   `<modid>.configuration.section.<modid>.common.toml.title`、`<modid>.configuration.<字段名>`。
 
 ## 多版本观察（未验证，待后续）
