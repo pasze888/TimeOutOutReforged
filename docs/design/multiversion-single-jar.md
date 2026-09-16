@@ -1,9 +1,10 @@
-# TimeOutOut NeoForge 移植设计思路
+# 单 jar 多版本移植设计
 
+> 本文原为 `docs/DESIGN.md`，按 §7 落点表迁入 `docs/design/`。
 > 本文记录 TimeOutOutReforged 从 Fabric 移植到 NeoForge 的**设计决策与理由**。
 > 最初基线 1.21.1；经 1.21.8 复核与中间版本静态扫描后，本分支改为**单 jar 覆盖 MC 1.21.1 ~ 1.21.8**，
 > 编译基线回到 **1.21.1**。**四个注入点在 1.21.1 / 1.21.3 / 1.21.4 / 1.21.5 / 1.21.8 全部未变，mixin 一行没改**；
-> 验证过的 API 签名、注入点细节见 [KNOWLEDGE.md](KNOWLEDGE.md)。
+> 验证过的 API 签名、注入点细节见 [docs/reference/mixin-injection-points.md](../reference/mixin-injection-points.md)。
 
 ## 1. 目标与范围
 
@@ -21,7 +22,7 @@
 | 决策点 | 结论 | 理由 |
 |---|---|---|
 | 目标 MC / 加载器 | NeoForge，MC `1.21.1` ~ `1.21.8` 单 jar | 工作区生态以 NeoForge 1.21.x 为主；注入点在该区间内逐版本核对未变 |
-| 多版本策略 | **单 jar 多版本**，元数据范围 `[1.21.1,1.21.9)`，不预埋条件 mixin | 四个注入点跨版本稳定性已用两层静态扫描 + 运行时实测验证（见 TESTING.md L3）；`require=1` 下注入点失配会立刻暴露，无需条件 mixin |
+| 多版本策略 | **单 jar 多版本**，元数据范围 `[1.21.1,1.21.9)`，不预埋条件 mixin | 四个注入点跨版本稳定性已用两层静态扫描 + 运行时实测验证（见 [docs/runbook/testing.md](../runbook/testing.md) 的 L3）；`require=1` 下注入点失配会立刻暴露，无需条件 mixin |
 | 编译基线 | NeoForge `21.1.244`（= 范围下界）+ Parchment `1.21.1/2024.11.17` | 对着最低版编译可避免误用高版本 API；比"对着上界编译"更安全 |
 | 配置格式 | ModConfigSpec COMMON + TOML + 配置界面 | 走 NeoForge 惯例（Q3/Q7）；代价是 Fabric 老 JSON 配置不能直接复用 |
 | mod 版本 | 1.2.0 | 与 Fabric 1.0.5 区分；支持范围由单版本扩为 1.21.1 ~ 1.21.8，属能力变化，走 minor |
@@ -59,7 +60,7 @@
 | KeepAlive 发送间隔 | `ServerCommonNetworkHandler.baseTick` | `ServerCommonPacketListenerImpl.keepConnectionAlive()` |
 | 登录超时 | `ServerLoginNetworkHandler`（`loginTicks` / `Text`） | `ServerLoginPacketListenerImpl`（`tick` / `Component`） |
 
-每个目标都对照 api-sources 源码 + `javap` 字节码**逐字核实**后才落笔（见 KNOWLEDGE.md）。
+每个目标都对照 api-sources 源码 + `javap` 字节码**逐字核实**后才落笔（见 [docs/reference/mixin-injection-points.md](../reference/mixin-injection-points.md)）。
 1.21.8 复核时四个注入点逐条复查，**结论是全部未变**，mixin 未作任何修改。
 
 ### 5.2 注入点选择原则
@@ -68,7 +69,7 @@
 - 匿名内部类（`Connection$1` 等）只存在 `.class`，编号由编译器生成顺序决定——**理论上是跨版本最脆弱的一环**。
   本分支曾据此把 `minecraft_version_range` 严格锁在单一版本。放开为 `[1.21.1,1.21.9)` 的依据是：
   已用 `javap` 对 6 个中间版本的官方 `client.jar` 逐版本核对了 `$1` 编号与注入锚点，**全部未变**
-  （方法与证据见 [KNOWLEDGE.md](KNOWLEDGE.md) 与 `temp/scan-1.21.2-1.21.7/REPORT.md`）。
+  （方法与证据见 [docs/reference/mixin-injection-points.md](../reference/mixin-injection-points.md) 与 `temp/scan-1.21.2-1.21.7/REPORT.md`）。
   > 这不等于 `$1` 从此稳定：**每次抬高上界都必须重新核对**，`require=1` 会让失配在目标类加载时立刻报错。
 
 ### 5.3 KeepAlive 语义澄清（重要）
@@ -125,8 +126,9 @@ vanilla 在 `tick()` 内 `if (this.tick++ == 600) disconnect(...)`（600 ticks =
   > ⚠️ 仍有两点未覆盖：① `1.21.2` / `1.21.6` / `1.21.7` **没有 NeoForge 正式版**（只有 beta），
   > 元数据范围虽然包含它们，但实际不会有用户跑 NeoForge 正式版；
   > ② 除 1.21.1（编译基线）与 1.21.8（已跑过 `runServer` + 探针）外，
-  > **中间版本只做了静态核对，没有运行时实测**。详见 TESTING.md L3。
-- **GameTest 门禁已下线（1.21.8）**：MC 改为数据驱动测试注册表，`minecraft:test_function` 是 built-in、mod 无入口（实测 `Trying to access missing test function`），`TimeOutOutGameTests` 与 `empty.nbt` 已删除；注入点验证改为 `runServer` + 探针 + 真客户端（见 TESTING.md 的"注入点怎么验"）。
+  > **中间版本只做了静态核对，没有运行时实测**。详见 [docs/runbook/testing.md](../runbook/testing.md) 的 L3。
+- **GameTest 门禁已下线（1.21.8）**：MC 改为数据驱动测试注册表，`minecraft:test_function` 是 built-in、mod 无入口（实测 `Trying to access missing test function`），`TimeOutOutGameTests` 与 `empty.nbt` 已删除；注入点验证改为 `runServer` + 探针 + 真客户端（见 [docs/runbook/testing.md](../runbook/testing.md) 的"注入点怎么验"）。
+  > 该 API 变更的细节见 [docs/troubleshooting.md](../troubleshooting.md)。
 
 ## 8. 未来扩展方向
 

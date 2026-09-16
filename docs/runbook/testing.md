@@ -1,5 +1,6 @@
-# TimeOutOut 测试手册
+# 测试门禁与多版本验证
 
+> 本文原为 `docs/TESTING.md`，按 §7 落点表迁入 `docs/runbook/`。
 > 分层测试策略：**L1 自动化门禁**（每次改动必跑；目前只剩 `build`，由 CI 执行）→ **L2 行为验证**（发布前手动跑）→ **L3 多版本**（单 jar 覆盖 1.21.1 ~ 1.21.8 的核对与实测）。
 > 本模组逻辑极薄（只有三个 mixin 返回配置值），风险集中在"mixin 注入点是否匹配目标 MC 版本"和"三个超时是否真的生效"，测试围绕这两点设计。
 >
@@ -229,10 +230,10 @@ MC 包 = `VarInt 长度前缀` + `VarInt 包ID` + 负载。1.21.1 握手包（�
 
 ### 新增/抬高目标版本的流程
 
-1. 用该版本的反编译源码或 `javap` 核对四个注入点（类名、方法名、匿名类 `$1` 编号、常量数量与位置）——清单见 [KNOWLEDGE.md](KNOWLEDGE.md)；
+1. 用该版本的反编译源码或 `javap` 核对四个注入点（类名、方法名、匿名类 `$1` 编号、常量数量与位置）——清单见 [docs/reference/mixin-injection-points.md](../reference/mixin-injection-points.md)；
 2. 确认该版本**有 NeoForge 正式版**（`neoforged.forgecdn.net` 的 `maven-metadata.xml`）；
 3. 若**降低**下界：把 `minecraft_version` / `parchment_*` 一并降到新下界并重新 `build`
-   （编译基线必须等于范围下界，见 DESIGN.md §1）；
+   （编译基线必须等于范围下界，见 [docs/design/multiversion-single-jar.md](../design/multiversion-single-jar.md) §1）；
 4. 若**抬高**上界：改 `minecraft_version_range`，**不需要动编译基线**（基线始终是下界）；
 5. 在新版本上起 `runServer` + 探针（L2 场景 4，**记得改 `--protocol`**），
    KeepAlive 需真客户端进服；日志里确认四条 `Mixing ...` 都出现；
