@@ -124,7 +124,7 @@ keepAlivePacketIntervalSeconds = 2  # 原 15
    # 协议号必须与"当前 dev 环境跑的 MC 版本"一致；不一致时握手会被直接拒掉，
    # 表现为"立刻断开"——是假阳性，不是超时生效。
    # 本分支编译基线是 1.21.1 → 767；若切到 1.21.8 跑则用 772。
-   python docs/scripts/login_timeout_probe.py 127.0.0.1 25565 --protocol 767
+   python scripts/login_timeout_probe.py 127.0.0.1 25565 --protocol 767
    ```
 
 4. **预期**：约 `loginTimeoutTicks / 20` 秒后服务端关闭连接，输出形如

@@ -10,8 +10,6 @@
 - **补中文 README**：现只有英文 `README.md`，规范要求配 `README.zh-CN.md` 并保持两份同步，
   顶部语言切换写 `[English](README.md) | [简体中文](README.zh-CN.md)`。需要翻译，属于 README
   正文改动，须先向用户提出修改请求并确认。
-- **`docs/scripts/login_timeout_probe.py` 的落点**：目前作为工具脚本留在 `docs/scripts/`，
-  §7 落点表未覆盖脚本目录，暂按原样保留，待确认是否迁到 `scripts/`。
 
 ## 依据
 

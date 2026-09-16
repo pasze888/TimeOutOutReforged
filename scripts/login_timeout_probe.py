@@ -6,7 +6,7 @@ ServerLoginPacketListenerImpl 并开始 tick，因此无需完成登录（甚至
 Login Start）就能触发 ServerLoginPacketListenerImplMixin 的登录超时踢人。
 
 用法：
-    python login_timeout_probe.py [host] [port] [--protocol 767] [--wait 30]
+    python scripts/login_timeout_probe.py [host] [port] [--protocol 767] [--wait 30]
 
 前置条件：
     loginTimeoutTicks 已调小（如 60 = 3 秒），且 readTimeoutSeconds 大于它。
